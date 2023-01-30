@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import requests
 import snowflake.connector
+from urllib.error import URLError
 
 my_fruit_list = pd.read_csv("https://uni-lab-files.s3.us-west-2.amazonaws.com/dabw/fruit_macros.txt")
 my_fruit_list = my_fruit_list.set_index('Fruit')
@@ -20,15 +21,20 @@ fruits_to_show = my_fruit_list.loc[fruits_selected]
 st.dataframe(fruits_to_show)
 
 st.header("Fruityvice Fruit Advice!")
-fruityvice_response = requests.get("https://fruityvice.com/api/fruit/watermelon")
+try:
+    fruit_choice = st.text_input('What fruit would you like information about?')
+    if not fruit_choice:
+        st.error("Please select a fruit to get information.")
 
-fruit_choice = st.text_input('What fruit would you like information about?', 'Kiwi')
-st.write('The user entered ', fruit_choice)
+    else:
+        fruityvice_response = requests.get(f"https://fruityvice.com/api/fruit/{fruit_choice}")
+        fruityvice_normalized = pd.json_normalize(fruityvice_response.json())
+        st.dataframe(fruityvice_normalized)
 
-# write your own comment -what does the next line do?
-fruityvice_normalized = pd.json_normalize(fruityvice_response.json())
-# write your own comment - what does this do?
-st.dataframe(fruityvice_normalized)
+except URLError as e:
+    st.error()
+
+st.stop()
 
 my_cnx = snowflake.connector.connect(**st.secrets["snowflake"])
 my_cur = my_cnx.cursor()
@@ -39,4 +45,4 @@ st.dataframe(my_data_rows)
 
 add_my_fruit = st.text_input('What fruit would you like to add?', 'Kiwi')
 st.write('Thanks for adding ', add_my_fruit)
-my_cur.execute(f"insert into fruit_load_list values {add_my_fruit}")
+#my_cur.execute(f"insert into fruit_load_list values {add_my_fruit}")
